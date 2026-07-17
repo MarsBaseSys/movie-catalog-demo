@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm -v)",
+      "Bash(command -v nvm)",
+      "Read(//Users/sutaobian/.nvm/versions/node/**)",
+      "Bash(command -v n)",
+      "Bash(command -v fnm)",
+      "Bash(command -v brew)",
+      "Bash(curl -s http://localhost:3000/movies)",
+      "Bash(curl -s -X POST http://localhost:3000/movies -H \"Content-Type: application/json\" -d '{\"title\":\"Inception\",\"year\":2010,\"genre\":\"Sci-Fi\"}')",
+      "Bash(curl -s -X POST http://localhost:3000/movies -H \"Content-Type: application/json\" -d '{\"title\":\"Parasite\",\"year\":2019,\"genre\":\"Thriller\"}')",
+      "Bash(curl -s http://localhost:3000/movies/1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/movies/999)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -v http://localhost:3000/movies)",
+      "Bash(export NO_PROXY=localhost,127.0.0.1)",
+      "Bash(curl -s --noproxy '*' http://127.0.0.1:3000/movies)",
+      "Bash(curl -s --noproxy '*' -X POST http://127.0.0.1:3000/movies -H \"Content-Type: application/json\" -d '{\"title\":\"Inception\",\"year\":2010,\"genre\":\"Sci-Fi\"}')",
+      "Bash(curl -s --noproxy '*' -X POST http://127.0.0.1:3000/movies -H \"Content-Type: application/json\" -d '{\"title\":\"Parasite\",\"year\":2019,\"genre\":\"Thriller\"}')",
+      "Bash(curl -s --noproxy '*' http://127.0.0.1:3000/movies/1)"
+    ]
+  }
+}
