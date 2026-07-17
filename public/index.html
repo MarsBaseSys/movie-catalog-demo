@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>电影列表 - Movie Catalog</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1>电影列表</h1>
+      <div id="no-permission" class="error hidden">你没有查看电影信息的权限。</div>
+      <table id="movies-table" class="hidden">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>片名</th>
+            <th>年份</th>
+            <th>类型</th>
+          </tr>
+        </thead>
+        <tbody id="movies-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    (async () => {
+      const me = await requireLogin();
+      if (!me) return;
+
+      renderNav(me, 'movies');
+
+      if (!me.can_view) {
+        document.getElementById('no-permission').classList.remove('hidden');
+        return;
+      }
+
+      const res = await apiFetch('/movies');
+      if (!res.ok) {
+        document.getElementById('no-permission').textContent = '加载电影列表失败。';
+        document.getElementById('no-permission').classList.remove('hidden');
+        return;
+      }
+
+      const movies = await res.json();
+      const tbody = document.getElementById('movies-body');
+      movies.forEach((movie) => {
+        const tr = document.createElement('tr');
+        [movie.id, movie.title, movie.year, movie.genre].forEach((value) => {
+          const td = document.createElement('td');
+          td.textContent = value;
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('movies-table').classList.remove('hidden');
+    })();
+  </script>
+</body>
+</html>

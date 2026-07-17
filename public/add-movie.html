@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>添加电影 - Movie Catalog</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1>添加电影</h1>
+      <div id="no-permission" class="error hidden">你没有添加电影的权限。</div>
+      <form id="add-movie-form">
+        <label>
+          片名
+          <input type="text" id="title" name="title" required />
+        </label>
+        <label>
+          年份
+          <input type="number" id="year" name="year" required />
+        </label>
+        <label>
+          类型
+          <input type="text" id="genre" name="genre" required />
+        </label>
+        <div id="error" class="error hidden"></div>
+        <div id="success" class="success hidden"></div>
+        <button type="submit">添加</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    (async () => {
+      const me = await requireLogin();
+      if (!me) return;
+
+      renderNav(me, 'add-movie');
+
+      if (!me.can_add) {
+        document.getElementById('no-permission').classList.remove('hidden');
+        document.getElementById('add-movie-form').classList.add('hidden');
+        return;
+      }
+
+      document.getElementById('add-movie-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = document.getElementById('error');
+        const successEl = document.getElementById('success');
+        errorEl.classList.add('hidden');
+        successEl.classList.add('hidden');
+
+        const title = document.getElementById('title').value;
+        const year = Number(document.getElementById('year').value);
+        const genre = document.getElementById('genre').value;
+
+        const res = await apiFetch('/movies', {
+          method: 'POST',
+          body: JSON.stringify({ title, year, genre }),
+        });
+
+        if (res.ok) {
+          successEl.textContent = '电影添加成功。';
+          successEl.classList.remove('hidden');
+          document.getElementById('add-movie-form').reset();
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        errorEl.textContent = data.error || '添加失败';
+        errorEl.classList.remove('hidden');
+      });
+    })();
+  </script>
+</body>
+</html>

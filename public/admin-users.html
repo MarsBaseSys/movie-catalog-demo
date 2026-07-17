@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8" />
+  <title>用户管理 - Movie Catalog</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main>
+    <div class="card">
+      <h1>用户管理</h1>
+      <div id="list-error" class="error hidden"></div>
+      <table>
+        <thead>
+          <tr>
+            <th>用户名</th>
+            <th>角色</th>
+            <th>查看电影</th>
+            <th>添加电影</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="users-body"></tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <h1>创建用户</h1>
+      <form id="create-user-form">
+        <label>
+          用户名
+          <input type="text" id="new-username" name="username" required />
+        </label>
+        <label>
+          密码
+          <input type="password" id="new-password" name="password" required />
+        </label>
+        <label>
+          角色
+          <select id="new-role" name="role">
+            <option value="user" selected>普通用户</option>
+            <option value="admin">管理员</option>
+          </select>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="new-can-view" name="can_view" />
+          可查看电影信息
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="new-can-add" name="can_add" />
+          可添加电影
+        </label>
+        <div id="create-error" class="error hidden"></div>
+        <button type="submit">创建</button>
+      </form>
+    </div>
+  </main>
+
+  <script src="/app.js"></script>
+  <script>
+    let currentUserId = null;
+
+    function userRow(user) {
+      const tr = document.createElement('tr');
+      tr.dataset.id = user.id;
+
+      const nameTd = document.createElement('td');
+      nameTd.textContent = user.username;
+      tr.appendChild(nameTd);
+
+      const roleTd = document.createElement('td');
+      roleTd.textContent = user.role === 'admin' ? '管理员' : '普通用户';
+      tr.appendChild(roleTd);
+
+      const isAdmin = user.role === 'admin';
+
+      const viewTd = document.createElement('td');
+      const viewCheckbox = document.createElement('input');
+      viewCheckbox.type = 'checkbox';
+      viewCheckbox.checked = isAdmin || !!user.can_view;
+      viewCheckbox.disabled = isAdmin;
+      viewTd.appendChild(viewCheckbox);
+      tr.appendChild(viewTd);
+
+      const addTd = document.createElement('td');
+      const addCheckbox = document.createElement('input');
+      addCheckbox.type = 'checkbox';
+      addCheckbox.checked = isAdmin || !!user.can_add;
+      addCheckbox.disabled = isAdmin;
+      addTd.appendChild(addCheckbox);
+      tr.appendChild(addTd);
+
+      const statusTd = document.createElement('td');
+      const statusParts = [];
+      if (user.disabled) statusParts.push('已禁用');
+      if (user.locked_until && user.locked_until > Date.now()) {
+        const until = new Date(user.locked_until);
+        statusParts.push(`锁定至 ${until.toLocaleTimeString()}`);
+      }
+      statusTd.textContent = statusParts.length ? statusParts.join(' / ') : '正常';
+      tr.appendChild(statusTd);
+
+      const actionsTd = document.createElement('td');
+      actionsTd.className = 'row-actions';
+
+      if (!isAdmin) {
+        const saveBtn = document.createElement('button');
+        saveBtn.className = 'btn';
+        saveBtn.type = 'button';
+        saveBtn.textContent = '保存';
+        saveBtn.addEventListener('click', async () => {
+          const res = await apiFetch(`/api/users/${user.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              can_view: viewCheckbox.checked,
+              can_add: addCheckbox.checked,
+            }),
+          });
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || '保存失败');
+          }
+        });
+        actionsTd.appendChild(saveBtn);
+      }
+
+      if (user.id !== currentUserId) {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.className = 'btn';
+        toggleBtn.type = 'button';
+        toggleBtn.textContent = user.disabled ? '启用' : '禁用';
+        toggleBtn.addEventListener('click', async () => {
+          const res = await apiFetch(`/api/users/${user.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ disabled: !user.disabled }),
+          });
+          if (res.ok) {
+            await loadUsers();
+          } else {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || '操作失败');
+          }
+        });
+        actionsTd.appendChild(toggleBtn);
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.className = 'btn danger';
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '删除';
+        deleteBtn.addEventListener('click', async () => {
+          if (!confirm(`确认删除用户 "${user.username}" 吗？`)) return;
+          const res = await apiFetch(`/api/users/${user.id}`, { method: 'DELETE' });
+          if (res.ok) {
+            tr.remove();
+          } else {
+            const data = await res.json().catch(() => ({}));
+            alert(data.error || '删除失败');
+          }
+        });
+        actionsTd.appendChild(deleteBtn);
+      }
+
+      tr.appendChild(actionsTd);
+      return tr;
+    }
+
+    async function loadUsers() {
+      const res = await apiFetch('/api/users');
+      const listError = document.getElementById('list-error');
+      if (!res.ok) {
+        listError.textContent = '加载用户列表失败。';
+        listError.classList.remove('hidden');
+        return;
+      }
+      listError.classList.add('hidden');
+      const users = await res.json();
+      const tbody = document.getElementById('users-body');
+      tbody.innerHTML = '';
+      users.forEach((user) => tbody.appendChild(userRow(user)));
+    }
+
+    (async () => {
+      const me = await requireLogin();
+      if (!me) return;
+
+      if (me.role !== 'admin') {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      currentUserId = me.id;
+      renderNav(me, 'admin-users');
+      await loadUsers();
+
+      document.getElementById('create-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const errorEl = document.getElementById('create-error');
+        errorEl.classList.add('hidden');
+
+        const username = document.getElementById('new-username').value;
+        const password = document.getElementById('new-password').value;
+        const role = document.getElementById('new-role').value;
+        const can_view = document.getElementById('new-can-view').checked;
+        const can_add = document.getElementById('new-can-add').checked;
+
+        const res = await apiFetch('/api/users', {
+          method: 'POST',
+          body: JSON.stringify({ username, password, role, can_view, can_add }),
+        });
+
+        if (res.ok) {
+          document.getElementById('create-user-form').reset();
+          await loadUsers();
+          return;
+        }
+
+        const data = await res.json().catch(() => ({}));
+        errorEl.textContent = data.error || '创建失败';
+        errorEl.classList.remove('hidden');
+      });
+    })();
+  </script>
+</body>
+</html>
